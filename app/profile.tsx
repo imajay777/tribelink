@@ -13,7 +13,7 @@ import {
   Trophy,
   Crown,
 } from 'lucide-react-native';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,8 @@ import {
   ScrollView,
   TextInput,
   Modal,
+  Alert,
+  Animated,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -70,6 +72,20 @@ export default function ProfileScreen() {
       setProfileState(userProfile);
     }
   }, [userProfile]);
+
+  const allyScale = useRef(new Animated.Value(1)).current;
+  const lastAllyRef = useRef<number | undefined>(userProfile?.allyScore);
+
+  useEffect(() => {
+    const newVal = userProfile?.allyScore;
+    if (typeof newVal === 'number' && newVal !== lastAllyRef.current) {
+      lastAllyRef.current = newVal;
+      Animated.sequence([
+        Animated.timing(allyScale, { toValue: 1.12, duration: 220, useNativeDriver: true }),
+        Animated.timing(allyScale, { toValue: 1, duration: 220, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [userProfile?.allyScore]);
 
   const renderPlatformStatus = (
     platformId: string,
@@ -170,7 +186,11 @@ export default function ProfileScreen() {
               </LinearGradient>
             </View>
 
-            <TouchableOpacity style={styles.editButton} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.editButton}
+              activeOpacity={0.7}
+              onPress={() => Alert.alert('Edit Profile', 'Edit profile coming soon.')}
+            >
               <BlurView
                 intensity={20}
                 tint={activeTheme === 'dark' ? 'dark' : 'light'}
@@ -436,9 +456,9 @@ export default function ProfileScreen() {
                   <View style={styles.allyScoreHeader}>
                     <Award size={40} color={colors.accent} strokeWidth={2.5} />
                     <View style={styles.allyScoreTextContainer}>
-                      <Text style={[styles.allyScoreValue, { color: colors.text }]}>
-                        {mockProfile.allyScore}
-                      </Text>
+                      <Animated.Text style={[styles.allyScoreValue, { color: colors.text, transform: [{ scale: allyScale }] }]}> 
+                        {userProfile?.allyScore ?? mockProfile.allyScore}
+                      </Animated.Text>
                       <Text style={[styles.allyScoreLabel, { color: colors.textSecondary }]}>
                         Ally Score
                       </Text>
@@ -450,8 +470,8 @@ export default function ProfileScreen() {
                   </Text>
                   <View style={styles.allyScoreStats}>
                     <View style={styles.allyScoreStat}>
-                      <Text style={[styles.allyScoreStatValue, { color: colors.accent }]}>
-                        {mockProfile.completedChallenges}
+                        <Text style={[styles.allyScoreStatValue, { color: colors.accent }]}>
+                        {userProfile?.completedChallenges ?? mockProfile.completedChallenges}
                       </Text>
                       <Text style={[styles.allyScoreStatLabel, { color: colors.textSecondary }]}>
                         Challenges Completed

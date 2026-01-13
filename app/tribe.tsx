@@ -8,7 +8,7 @@ import {
   X,
   Check,
 } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,12 +20,14 @@ import {
   Modal,
   TextInput,
   Pressable,
+  Animated,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/contexts/UserContext';
+import { useRouter } from 'expo-router';
 
 export default function TribeScreen() {
   const { colors, activeTheme } = useTheme();
@@ -81,6 +83,7 @@ export default function TribeScreen() {
   };
 
   const { userProfile, setUserProfile } = useUser();
+  const router = useRouter();
   const [members, setMembers] = useState(mockTribe.members);
   const [joinRequests, setJoinRequests] = useState(mockJoinRequests);
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
@@ -93,6 +96,40 @@ export default function TribeScreen() {
 
   const derivedTribeName = userProfile?.tribe?.name ?? mockTribe.name;
 
+  // animated pulse for total score changes
+  const scoreScale = useRef(new Animated.Value(1)).current;
+  const lastTotalRef = useRef<number>(userProfile?.tribe?.totalAllyScore ?? mockTribe.totalAllyScore);
+
+  // per-member animated scales and previous values
+  const memberScalesRef = useRef<Record<string, Animated.Value>>({});
+  const lastMembersRef = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    members.forEach((m: any) => {
+      if (!memberScalesRef.current[m.id]) memberScalesRef.current[m.id] = new Animated.Value(1);
+      const prev = lastMembersRef.current[m.id];
+      if (typeof prev === 'number' && m.allyScore !== prev) {
+        const s = memberScalesRef.current[m.id];
+        Animated.sequence([
+          Animated.timing(s, { toValue: 1.14, duration: 220, useNativeDriver: true }),
+          Animated.timing(s, { toValue: 1, duration: 220, useNativeDriver: true }),
+        ]).start();
+      }
+      lastMembersRef.current[m.id] = m.allyScore;
+    });
+  }, [members]);
+
+  useEffect(() => {
+    const newTotal = userProfile?.tribe?.totalAllyScore ?? mockTribe.totalAllyScore;
+    if (newTotal !== lastTotalRef.current) {
+      lastTotalRef.current = newTotal;
+      Animated.sequence([
+        Animated.timing(scoreScale, { toValue: 1.12, duration: 220, useNativeDriver: true }),
+        Animated.timing(scoreScale, { toValue: 1, duration: 220, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [userProfile?.tribe?.totalAllyScore]);
+
   const handleAccept = async (id: string) => {
     const req = joinRequests.find(r => r.id === id);
     if (!req) return;
@@ -102,6 +139,12 @@ export default function TribeScreen() {
     if (setUserProfile) {
       const updated = { ...(userProfile || {}), tribe: { ...(userProfile?.tribe || {}), members: [newMember, ...(userProfile?.tribe?.members || [])] } };
       await setUserProfile(updated);
+      // navigate to the new member detail
+      try {
+        router.push(`/member/${newMember.id}`);
+      } catch (e) {
+        // ignore navigation errors in dev
+      }
     }
   };
 
@@ -170,9 +213,9 @@ export default function TribeScreen() {
                 <View style={styles.tribeStatsRow}>
                   <View style={styles.tribeStat}>
                     <Award size={20} color={colors.accent} strokeWidth={2} />
-                    <Text style={[styles.tribeStatValue, { color: colors.text }]}>
-                      {mockTribe.totalAllyScore}
-                    </Text>
+                    <Animated.Text style={[styles.tribeStatValue, { color: colors.text, transform: [{ scale: scoreScale }] }]}> 
+                      {userProfile?.tribe?.totalAllyScore ?? mockTribe.totalAllyScore}
+                    </Animated.Text>
                     <Text style={[styles.tribeStatLabel, { color: colors.textSecondary }]}>
                       Total Score
                     </Text>
@@ -235,12 +278,16 @@ export default function TribeScreen() {
 
               <View style={styles.requestsList}>
                 {joinRequests.map((request) => (
-                  <BlurView
+                  <TouchableOpacity
                     key={request.id}
-                    intensity={15}
-                    tint={activeTheme === 'dark' ? 'dark' : 'light'}
-                    style={[styles.requestCard, { borderColor: colors.border }]}
+                    activeOpacity={0.85}
+                    onPress={() => Alert.alert('Join Request', 'View request details coming soon.')}
                   >
+                    <BlurView
+                      intensity={15}
+                      tint={activeTheme === 'dark' ? 'dark' : 'light'}
+                      style={[styles.requestCard, { borderColor: colors.border }]}
+                    >
                     <View style={styles.requestHeader}>
                       <LinearGradient
                         colors={colors.gradient as any}
@@ -305,6 +352,7 @@ export default function TribeScreen() {
                       </TouchableOpacity>
                     </View>
                   </BlurView>
+                  </TouchableOpacity>
                 ))}
               </View>
             </View>
@@ -314,12 +362,16 @@ export default function TribeScreen() {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Members</Text>
             <View style={styles.membersList}>
               {members.map((member) => (
-                <BlurView
+                <TouchableOpacity
                   key={member.id}
-                  intensity={15}
-                  tint={activeTheme === 'dark' ? 'dark' : 'light'}
-                  style={[styles.memberCard, { borderColor: colors.border }]}
+                  activeOpacity={0.85}
+                  onPress={() => Alert.alert('Member', 'Member profile coming soon.')}
                 >
+                  <BlurView
+                    intensity={15}
+                    tint={activeTheme === 'dark' ? 'dark' : 'light'}
+                    style={[styles.memberCard, { borderColor: colors.border }]}
+                  >
                   <View style={styles.memberContent}>
                     <LinearGradient
                       colors={colors.gradient as any}
@@ -345,9 +397,14 @@ export default function TribeScreen() {
                         <Text style={[styles.memberDot, { color: colors.textSecondary }]}>•</Text>
                         <View style={styles.memberStat}>
                           <Award size={14} color={colors.warning} strokeWidth={2} />
-                          <Text style={[styles.memberStatText, { color: colors.textSecondary }]}>
+                          <Animated.Text
+                            style={[
+                              styles.memberStatText,
+                              { color: colors.textSecondary, transform: [{ scale: memberScalesRef.current[member.id] || 1 }] },
+                            ]}
+                          >
                             {member.allyScore}
-                          </Text>
+                          </Animated.Text>
                         </View>
                       </View>
                     </View>
@@ -360,6 +417,7 @@ export default function TribeScreen() {
                     </TouchableOpacity>
                   </View>
                 </BlurView>
+                </TouchableOpacity>
               ))}
             </View>
             {members.length < 5 && (

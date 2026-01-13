@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Switch,
+  Alert,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,10 +17,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { NICHES, POSTING_FREQUENCIES, VIBES, NicheCategory } from '@/constants/data';
 import { useUser } from '@/contexts/UserContext';
+import RecommendationsList from '@/app/components/RecommendationsList';
 
 export default function CreatorOnboardingScreen() {
   const router = useRouter();
-  const { setUserType } = useUser();
+  const { setUserType, setPreferences, getTribeRecommendations } = useUser();
   const [step, setStep] = useState(1);
   
   const [selectedNiches, setSelectedNiches] = useState<{ category: NicheCategory; subNiche: string }[]>([]);
@@ -28,12 +30,20 @@ export default function CreatorOnboardingScreen() {
   const [selectedVibe, setSelectedVibe] = useState<string | null>(null);
   const [postingFrequency, setPostingFrequency] = useState<string | null>(null);
   const [openToIRL, setOpenToIRL] = useState(false);
+  const [recommendations, setRecommendations] = useState<any[] | null>(null);
 
   const removeNiche = (index: number) => {
     setSelectedNiches(selectedNiches.filter((_, i) => i !== index));
   };
 
   const handleComplete = async () => {
+    const prefs = {
+      niches: selectedNiches,
+      vibe: selectedVibe,
+      postingFrequency,
+      openToIRL,
+    };
+    if (setPreferences) await setPreferences(prefs);
     await setUserType('creator');
     router.replace('/(tabs)/home');
   };
@@ -241,19 +251,55 @@ export default function CreatorOnboardingScreen() {
       </BlurView>
 
       {postingFrequency && (
-        <TouchableOpacity
-          style={styles.nextButton}
-          onPress={handleComplete}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={[Colors.primary, Colors.primaryDark]}
-            style={styles.nextButtonGradient}
+        <>
+          <TouchableOpacity
+            style={styles.nextButton}
+            onPress={() => {
+              const recs = getTribeRecommendations ? getTribeRecommendations({ topK: 5 }) : null;
+              if (recs) setRecommendations(recs);
+            }}
+            activeOpacity={0.8}
           >
-            <Text style={styles.nextButtonText}>Complete Setup</Text>
-            <CheckCircle2 size={20} color={Colors.text} strokeWidth={2.5} />
-          </LinearGradient>
-        </TouchableOpacity>
+            <LinearGradient
+              colors={[Colors.surfaceLight, Colors.surfaceLight]}
+              style={styles.nextButtonGradient}
+            >
+              <Text style={[styles.nextButtonText, { color: Colors.textSecondary }]}>Preview Recommendations</Text>
+              <ArrowRight size={20} color={Colors.textSecondary} strokeWidth={2.5} />
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.nextButton}
+            onPress={handleComplete}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={[Colors.primary, Colors.primaryDark]}
+              style={styles.nextButtonGradient}
+            >
+              <Text style={styles.nextButtonText}>Complete Setup</Text>
+              <CheckCircle2 size={20} color={Colors.text} strokeWidth={2.5} />
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {recommendations && (
+            <>
+              <Text style={{ color: Colors.textSecondary, marginBottom: 8 }}>Recommended Tribes</Text>
+              <RecommendationsList
+                recommendations={recommendations}
+                onSave={async (tribe) => {
+                  const existing = userProfile?.savedTribes || [];
+                  if (!existing.find((t: any) => t.id === tribe.id)) {
+                    const updated = { ...(userProfile || {}), savedTribes: [...existing, tribe] };
+                    if (setUserProfile) await setUserProfile(updated);
+                  }
+                }}
+                onView={(tribe) => alert(`${tribe.name} — ${Math.round((recommendations?.find((r: any)=>r.tribe.id===tribe.id)?.score||0)*100)}% match`)}
+              />
+            </>
+          )}
+        </>
       )}
     </View>
   );

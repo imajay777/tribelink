@@ -1,13 +1,15 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Users, Trophy, Zap, Bell, Moon, Sun, Compass, UserCircle2, Target } from 'lucide-react-native';
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Alert,
+  Animated,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +22,20 @@ export default function HomeScreen() {
   const router = useRouter();
   const { colors, activeTheme, setTheme } = useTheme();
   const { userProfile } = useUser();
+
+  const allyScale = useRef(new Animated.Value(1)).current;
+  const lastAllyRef = useRef<number | undefined>(userProfile?.allyScore);
+
+  useEffect(() => {
+    const newVal = userProfile?.allyScore;
+    if (typeof newVal === 'number' && newVal !== lastAllyRef.current) {
+      lastAllyRef.current = newVal;
+      Animated.sequence([
+        Animated.timing(allyScale, { toValue: 1.12, duration: 220, useNativeDriver: true }),
+        Animated.timing(allyScale, { toValue: 1, duration: 220, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [userProfile?.allyScore]);
 
   const mockActivities = [
     {
@@ -112,7 +128,9 @@ export default function HomeScreen() {
               >
                 <View style={styles.statCardContent}>
                   <Trophy size={32} color="#ffffff" />
-                  <Text style={styles.statValue}>850</Text>
+                  <Animated.Text style={[styles.statValue, { transform: [{ scale: allyScale }] }]}>
+                    {userProfile?.allyScore ?? 850}
+                  </Animated.Text>
                   <Text style={styles.statLabel}>Ally Score</Text>
                 </View>
               </LinearGradient>
@@ -144,12 +162,16 @@ export default function HomeScreen() {
               </View>
 
               {CHALLENGES.map((challenge, index) => (
-                <BlurView
+                <TouchableOpacity
                   key={challenge.id}
-                  intensity={activeTheme === 'dark' ? 20 : 80}
-                  tint={activeTheme === 'dark' ? 'dark' : 'light'}
-                  style={[styles.challengeCard, { backgroundColor: colors.cardTransparent }]}
+                  activeOpacity={0.85}
+                  onPress={() => Alert.alert('Challenge', 'Open challenge details from the Challenges screen.')}
                 >
+                  <BlurView
+                    intensity={activeTheme === 'dark' ? 20 : 80}
+                    tint={activeTheme === 'dark' ? 'dark' : 'light'}
+                    style={[styles.challengeCard, { backgroundColor: colors.cardTransparent }]}
+                  >
                   <View style={styles.challengeHeader}>
                     <View
                       style={[
@@ -179,6 +201,7 @@ export default function HomeScreen() {
                     {challenge.action}
                   </Text>
                 </BlurView>
+                </TouchableOpacity>
               ))}
             </View>
 
@@ -190,12 +213,16 @@ export default function HomeScreen() {
               </View>
 
               {activities.map((activity) => (
-                <BlurView
+                <TouchableOpacity
                   key={activity.id}
-                  intensity={activeTheme === 'dark' ? 20 : 80}
-                  tint={activeTheme === 'dark' ? 'dark' : 'light'}
-                  style={[styles.activityCard, { backgroundColor: colors.cardTransparent }]}
+                  activeOpacity={0.85}
+                  onPress={() => Alert.alert('Activity', 'Activity details coming soon.')}
                 >
+                  <BlurView
+                    intensity={activeTheme === 'dark' ? 20 : 80}
+                    tint={activeTheme === 'dark' ? 'dark' : 'light'}
+                    style={[styles.activityCard, { backgroundColor: colors.cardTransparent }]}
+                  >
                   <UserCircle2 size={40} color={colors.primary} />
                   <View style={styles.activityContent}>
                     <Text style={[styles.activityUser, { color: colors.text }]}>
@@ -209,6 +236,7 @@ export default function HomeScreen() {
                     </Text>
                   </View>
                 </BlurView>
+                </TouchableOpacity>
               ))}
             </View>
 

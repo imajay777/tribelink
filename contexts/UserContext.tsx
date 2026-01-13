@@ -3,6 +3,8 @@ import createContextHook from '@nkzw/create-context-hook';
 import { useEffect, useState } from 'react';
 
 import { UserType } from '@/types';
+import { recommendTribes } from '@/utils/tribeMatching';
+import { SAMPLE_TRIBES } from '@/constants/tribes';
 
 const USER_TYPE_KEY = '@user_type';
 const USER_PROFILE_KEY = '@user_profile_v1';
@@ -63,12 +65,31 @@ export const [UserProvider, useUser] = createContextHook(() => {
     await saveProfile(updated);
   };
 
+  // Preferences helpers for onboarding and matching
+  const setPreferences = async (preferences: Record<string, any>) => {
+    const updated = { ...(userProfile || {}), preferences };
+    await saveProfile(updated);
+    return updated;
+  };
+
+  const getTribeRecommendations = (opts?: any) => {
+    try {
+      const prefs = userProfile?.preferences || {};
+      return recommendTribes(prefs, SAMPLE_TRIBES, opts || {});
+    } catch (e) {
+      console.error('Failed to compute tribe recommendations', e);
+      return [];
+    }
+  };
+
   return {
     userType,
     setUserType,
     userProfile,
     setUserProfile: saveProfile,
     setTribeName,
+    setPreferences,
+    getTribeRecommendations,
     isLoading,
   };
 });

@@ -15,9 +15,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { CHALLENGES } from '@/constants/data';
+import { useUser } from '@/contexts/UserContext';
 
 export default function ChallengesScreen() {
   const { colors, activeTheme } = useTheme();
+  const { userProfile, setUserProfile } = useUser();
 
   const mockChallengesWithProgress = [
     {
@@ -84,8 +86,40 @@ export default function ChallengesScreen() {
 
         const updated = { ...c, progress: nextProgress, completed };
 
-        if (completed) {
+          if (completed) {
           Alert.alert('Challenge Complete', `${c.name} completed! You earned ${c.points} points.`);
+          if (setUserProfile) {
+            const current = userProfile || {};
+            const tribe = current.tribe || {};
+            const currentTotal = tribe.totalAllyScore || 0;
+            const points = c.points || 0;
+
+            // Distribute points across members (even split, remainder to first members)
+            const members = Array.isArray(tribe.members) ? tribe.members : [];
+            let updatedMembers = members.slice();
+            if (members.length > 0 && points > 0) {
+              const baseShare = Math.floor(points / members.length);
+              let remainder = points % members.length;
+              updatedMembers = members.map((m: any, idx: number) => ({
+                ...m,
+                allyScore: (m.allyScore || 0) + baseShare + (remainder > 0 ? 1 : 0),
+              })).map((m: any, idx: number) => {
+                if (idx < remainder) return m;
+                return m;
+              });
+            }
+
+            const updatedProfile: any = {
+              ...current,
+              tribe: {
+                ...tribe,
+                totalAllyScore: currentTotal + points,
+                members: updatedMembers,
+              },
+            };
+
+            setUserProfile(updatedProfile);
+          }
         } else {
           Alert.alert('Progress Saved', `${c.name}: ${nextProgress}/${c.maxProgress}`);
         }

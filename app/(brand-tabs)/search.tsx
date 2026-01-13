@@ -22,6 +22,7 @@ import {
   TextInput,
   TouchableOpacity,
   Modal,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -353,7 +354,11 @@ export default function BrandSearchScreen() {
           showsVerticalScrollIndicator={false}
         >
           {filteredCreators.map(creator => (
-            <TouchableOpacity key={creator.id} activeOpacity={0.9}>
+            <TouchableOpacity
+              key={creator.id}
+              activeOpacity={0.9}
+              onPress={() => Alert.alert('Creator', 'Open creator profile coming soon.')}
+            >
               <BlurView intensity={15} tint="dark" style={styles.creatorCard}>
                 <View style={styles.creatorHeader}>
                   <View style={styles.creatorAvatar}>
@@ -473,7 +478,11 @@ export default function BrandSearchScreen() {
                   </View>
                 )}
 
-                <TouchableOpacity style={styles.contactButton} activeOpacity={0.8}>
+                <TouchableOpacity
+                  style={styles.contactButton}
+                  activeOpacity={0.8}
+                  onPress={() => Alert.alert('Request Sent', 'This is a demo action.')}
+                >
                   <LinearGradient
                     colors={[Colors.accent, Colors.accentDark]}
                     style={styles.contactButtonGradient}

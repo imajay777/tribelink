@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
+  Alert,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -142,12 +143,16 @@ export default function UpdatesScreen() {
           showsVerticalScrollIndicator={false}
         >
           {updates.map((update) => (
-            <BlurView
+            <TouchableOpacity
               key={update.id}
-              intensity={20}
-              tint={activeTheme === 'dark' ? 'dark' : 'light'}
-              style={[styles.updateCard, { borderColor: colors.border }]}
+              activeOpacity={0.85}
+              onPress={() => Alert.alert('Update', 'Open update details coming soon.')}
             >
+              <BlurView
+                intensity={20}
+                tint={activeTheme === 'dark' ? 'dark' : 'light'}
+                style={[styles.updateCard, { borderColor: colors.border }]}
+              >
               <View style={styles.updateContent}>
                 <View style={styles.updateHeader}>
                   <View style={styles.userInfo}>
@@ -196,7 +201,7 @@ export default function UpdatesScreen() {
                       </Text>
                     </View>
                   </View>
-                  <TouchableOpacity activeOpacity={0.7}>
+                  <TouchableOpacity activeOpacity={0.7} onPress={() => Alert.alert('Share', 'Share functionality coming soon.') }>
                     <Share2 size={18} color={colors.textSecondary} strokeWidth={2} />
                   </TouchableOpacity>
                 </View>
@@ -206,6 +211,7 @@ export default function UpdatesScreen() {
                 </View>
               </View>
             </BlurView>
+            </TouchableOpacity>
           ))}
         </ScrollView>
       </SafeAreaView>

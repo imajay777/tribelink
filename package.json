@@ -6,7 +6,8 @@
     "start": "expo start -p ltnjz0mjpvilbuw4zvd0q --tunnel",
     "start-web": "expo start -p ltnjz0mjpvilbuw4zvd0q --web --tunnel",
     "start-web-dev": "DEBUG=expo* expo start -p ltnjz0mjpvilbuw4zvd0q --web --tunnel",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test:tribe": "node __tests__/tribeMatching.test.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

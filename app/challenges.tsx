@@ -16,9 +16,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { CHALLENGES } from '@/constants/data';
+import { useUser } from '@/contexts/UserContext';
 
 export default function ChallengesScreen() {
   const { colors, activeTheme } = useTheme();
+  const { userProfile, setUserProfile } = useUser();
 
   const mockChallengesWithProgress = [
     {
@@ -80,8 +82,36 @@ export default function ChallengesScreen() {
 
         const updated = { ...c, progress: nextProgress, completed };
 
-        if (completed) {
+          if (completed) {
           Alert.alert('Challenge Complete', `${c.name} completed! You earned ${c.points} points.`);
+          if (setUserProfile) {
+            const current = userProfile || {};
+            const tribe = current.tribe || {};
+            const currentTotal = tribe.totalAllyScore || 0;
+            const points = c.points || 0;
+
+            const members = Array.isArray(tribe.members) ? tribe.members : [];
+            let updatedMembers = members.slice();
+            if (members.length > 0 && points > 0) {
+              const baseShare = Math.floor(points / members.length);
+              let remainder = points % members.length;
+              updatedMembers = members.map((m: any, idx: number) => ({
+                ...m,
+                allyScore: (m.allyScore || 0) + baseShare + (idx < remainder ? 1 : 0),
+              }));
+            }
+
+            const updatedProfile: any = {
+              ...current,
+              tribe: {
+                ...tribe,
+                totalAllyScore: currentTotal + points,
+                members: updatedMembers,
+              },
+            };
+
+            setUserProfile(updatedProfile);
+          }
         } else {
           Alert.alert('Progress Saved', `${c.name}: ${nextProgress}/${c.maxProgress}`);
         }
@@ -175,7 +205,11 @@ export default function ChallengesScreen() {
             </Text>
             <View style={styles.challengesList}>
               {challenges.map((challenge) => (
-                <TouchableOpacity key={challenge.id} activeOpacity={0.8}>
+                <TouchableOpacity
+                  key={challenge.id}
+                  activeOpacity={0.8}
+                  onPress={() => Alert.alert('Challenge', 'Tap the Start button to begin this challenge.')}
+                >
                   <BlurView
                     intensity={15}
                     tint={activeTheme === 'dark' ? 'dark' : 'light'}

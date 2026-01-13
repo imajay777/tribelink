@@ -15,13 +15,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { NICHES, FOLLOWER_BRACKETS } from '@/constants/data';
 import { useUser } from '@/contexts/UserContext';
+import RecommendationsList from '@/app/components/RecommendationsList';
 
 const BUDGET_BRACKETS = ['$1K-$5K', '$5K-$20K', '$20K-$50K', '$50K+'];
 const CAMPAIGN_GOALS = ['Brand Awareness', 'Product Launch', 'Content Creation', 'Sales Conversion'];
 
 export default function BrandOnboardingScreen() {
   const router = useRouter();
-  const { setUserType } = useUser();
+  const { setUserType, setPreferences, getTribeRecommendations } = useUser();
   const [step, setStep] = useState(1);
   
   const [targetIndustry, setTargetIndustry] = useState<string | null>(null);
@@ -30,8 +31,37 @@ export default function BrandOnboardingScreen() {
   const [campaignGoal, setCampaignGoal] = useState<string | null>(null);
 
   const handleComplete = async () => {
+    const prefs = {
+      industry: targetIndustry,
+      budget: budgetBracket,
+      creatorSize,
+      campaignGoal,
+    };
+    if (setPreferences) await setPreferences(prefs);
     await setUserType('brand');
     router.replace('/(brand-tabs)/search');
+  };
+
+  const [recommendations, setRecommendations] = useState<any[] | null>(null);
+  const previewRecommendations = () => {
+    if (getTribeRecommendations) {
+      const recs = getTribeRecommendations({ topK: 5 });
+      setRecommendations(recs);
+    }
+  };
+
+  const handleSaveTribe = async (tribe: any) => {
+    const existing = userProfile?.savedTribes || [];
+    const already = existing.find((t: any) => t.id === tribe.id);
+    if (already) return;
+    const updated = { ...(userProfile || {}), savedTribes: [...existing, tribe] };
+    if (setUserProfile) await setUserProfile(updated);
+  };
+
+  const handleView = (tribe: any) => {
+    // simple navigation to tribe detail could be added later; for now show alert
+    // eslint-disable-next-line no-alert
+    alert(`${tribe.name} — ${Math.round((recommendations?.find(r=>r.tribe.id===tribe.id)?.score||0)*100)}% match`);
   };
 
   const renderStep1 = () => (
@@ -213,19 +243,42 @@ export default function BrandOnboardingScreen() {
       </View>
 
       {campaignGoal && (
-        <TouchableOpacity
-          style={styles.nextButton}
-          onPress={handleComplete}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={[Colors.accent, Colors.accentDark]}
-            style={styles.nextButtonGradient}
+        <>
+          <TouchableOpacity
+            style={styles.nextButton}
+            onPress={previewRecommendations}
+            activeOpacity={0.8}
           >
-            <Text style={styles.nextButtonText}>Complete Setup</Text>
-            <CheckCircle2 size={20} color={Colors.text} strokeWidth={2.5} />
-          </LinearGradient>
-        </TouchableOpacity>
+            <LinearGradient
+              colors={[Colors.surfaceLight, Colors.surfaceLight]}
+              style={styles.nextButtonGradient}
+            >
+              <Text style={[styles.nextButtonText, { color: Colors.textSecondary }]}>Preview Recommendations</Text>
+              <ArrowRight size={20} color={Colors.textSecondary} strokeWidth={2.5} />
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.nextButton}
+            onPress={handleComplete}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={[Colors.accent, Colors.accentDark]}
+              style={styles.nextButtonGradient}
+            >
+              <Text style={styles.nextButtonText}>Complete Setup</Text>
+              <CheckCircle2 size={20} color={Colors.text} strokeWidth={2.5} />
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {recommendations && (
+            <>
+              <Text style={{ color: Colors.textSecondary, marginBottom: 8 }}>Recommended Tribes</Text>
+              <RecommendationsList recommendations={recommendations} onSave={handleSaveTribe} onView={handleView} />
+            </>
+          )}
+        </>
       )}
     </View>
   );
