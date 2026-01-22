@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ArrowRight, CheckCircle2 } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,11 +17,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { NICHES, POSTING_FREQUENCIES, VIBES, NicheCategory } from '@/constants/data';
 import { useUser } from '@/contexts/UserContext';
+import { useGoogleAuthRequest, googleSignInFlow } from '@/services/auth';
+import { GOOGLE_CLIENT_IDS } from '@/constants/google';
 import RecommendationsList from '@/app/components/RecommendationsList';
 
 export default function CreatorOnboardingScreen() {
   const router = useRouter();
-  const { setUserType, setPreferences, getTribeRecommendations } = useUser();
+  const { setUserType, setPreferences, getTribeRecommendations, setUserProfile, userProfile } = useUser();
+  const { request, response, promptAsync } = useGoogleAuthRequest();
+
+  useEffect(() => {
+    if (response?.type === 'success' && response.params?.id_token) {
+      // handled via explicit flows; this ensures the native redirect is completed
+    }
+  }, [response]);
   const [step, setStep] = useState(1);
   
   const [selectedNiches, setSelectedNiches] = useState<{ category: NicheCategory; subNiche: string }[]>([]);
@@ -44,6 +53,17 @@ export default function CreatorOnboardingScreen() {
       openToIRL,
     };
     if (setPreferences) await setPreferences(prefs);
+    // If Google is configured, prompt the user to sign in before finishing.
+    const configured = GOOGLE_CLIENT_IDS.webClientId || GOOGLE_CLIENT_IDS.androidClientId || GOOGLE_CLIENT_IDS.iosClientId;
+    if (configured) {
+      const res = await googleSignInFlow(promptAsync);
+      if (res?.success) {
+        // optionally attach profile data from Firebase/local token
+        // We persist a minimal profile marker and continue
+        const updated = { ...(/* userProfile */ {}), profileConnected: true };
+        if (setUserProfile) await setUserProfile(updated);
+      }
+    }
     await setUserType('creator');
     router.replace('/(tabs)/home');
   };
@@ -300,6 +320,28 @@ export default function CreatorOnboardingScreen() {
             </>
           )}
         </>
+      )}
+
+      {/* Optional Google Sign In button for creators (show when configured) */}
+      { (GOOGLE_CLIENT_IDS.webClientId || GOOGLE_CLIENT_IDS.androidClientId || GOOGLE_CLIENT_IDS.iosClientId) && (
+        <TouchableOpacity
+          style={[styles.nextButton, { marginTop: 12 }]}
+          onPress={async () => {
+            const r = await googleSignInFlow(promptAsync);
+            if (r?.success) {
+              // persist a flag
+              const updated = { ...(/* userProfile */ {}), profileConnected: true };
+              if (setUserProfile) await setUserProfile(updated);
+              Alert.alert('Signed in', 'Google account connected');
+            } else {
+              Alert.alert('Sign-in cancelled');
+            }
+          }}
+        >
+          <LinearGradient colors={[Colors.primary, Colors.primaryDark]} style={styles.nextButtonGradient}>
+            <Text style={styles.nextButtonText}>Sign in with Google</Text>
+          </LinearGradient>
+        </TouchableOpacity>
       )}
     </View>
   );

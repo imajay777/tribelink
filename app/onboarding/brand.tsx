@@ -15,7 +15,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { NICHES, FOLLOWER_BRACKETS } from '@/constants/data';
 import { useUser } from '@/contexts/UserContext';
-import RecommendationsList from '@/app/components/RecommendationsList';
 
 const BUDGET_BRACKETS = ['$1K-$5K', '$5K-$20K', '$20K-$50K', '$50K+'];
 const CAMPAIGN_GOALS = ['Brand Awareness', 'Product Launch', 'Content Creation', 'Sales Conversion'];
@@ -48,20 +47,6 @@ export default function BrandOnboardingScreen() {
       const recs = getTribeRecommendations({ topK: 5 });
       setRecommendations(recs);
     }
-  };
-
-  const handleSaveTribe = async (tribe: any) => {
-    const existing = userProfile?.savedTribes || [];
-    const already = existing.find((t: any) => t.id === tribe.id);
-    if (already) return;
-    const updated = { ...(userProfile || {}), savedTribes: [...existing, tribe] };
-    if (setUserProfile) await setUserProfile(updated);
-  };
-
-  const handleView = (tribe: any) => {
-    // simple navigation to tribe detail could be added later; for now show alert
-    // eslint-disable-next-line no-alert
-    alert(`${tribe.name} — ${Math.round((recommendations?.find(r=>r.tribe.id===tribe.id)?.score||0)*100)}% match`);
   };
 
   const renderStep1 = () => (
@@ -273,10 +258,14 @@ export default function BrandOnboardingScreen() {
           </TouchableOpacity>
 
           {recommendations && (
-            <>
+            <View style={{ marginTop: 12 }}>
               <Text style={{ color: Colors.textSecondary, marginBottom: 8 }}>Recommended Tribes</Text>
-              <RecommendationsList recommendations={recommendations} onSave={handleSaveTribe} onView={handleView} />
-            </>
+              {recommendations.map((r: any) => (
+                <BlurView key={r.tribe.id} intensity={10} tint="dark" style={[styles.optionCardWide, { marginBottom: 8 }]}> 
+                  <Text style={styles.optionText}>{r.tribe.name} — {(r.score * 100).toFixed(0)}%</Text>
+                </BlurView>
+              ))}
+            </View>
           )}
         </>
       )}
