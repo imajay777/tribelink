@@ -1,15 +1,11 @@
-import * as AuthSession from 'expo-auth-session';
+import React from 'react';
+import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { Alert, Platform } from 'react-native';
-import * as Linking from 'expo-linking';
 import { GOOGLE_CLIENT_IDS } from '@/constants/google';
 import { FIREBASE_CONFIG } from '@/constants/firebaseConfig';
 
 WebBrowser.maybeCompleteAuthSession();
-
-const redirectUrl = AuthSession.makeRedirectUrl({
-  path: 'auth/google/callback',
-});
 
 let firebaseAuth: any = null;
 
@@ -36,19 +32,20 @@ export function useGoogleAuthRequest() {
     return { request: null, response: null, promptAsync: null };
   }
 
-  console.log('📱 Redirect URI:', redirectUrl);
+  console.log('📱 Platform:', Platform.OS);
   
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest(
     {
       clientId,
-      scopes: ['openid', 'profile', 'email'],
-      redirectUrl,
-    },
-    {
-      authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-      tokenEndpoint: 'https://www.googleapis.com/oauth2/v4/token',
     }
   );
+  
+  // Log redirect URL after request is created
+  React.useEffect(() => {
+    if (request?.redirectUrl) {
+      console.log('📱 Redirect URI:', request.redirectUrl);
+    }
+  }, [request]);
   
   return { request, response, promptAsync };
 }
@@ -70,15 +67,21 @@ export async function googleSignInFlow(promptAsync: any) {
     Alert.alert('Google Sign-in not configured', 'Client IDs are missing. Set them in constants/google.ts');
     return null;
   }
+  console.log('🔐 Calling promptAsync...');
   const result = await promptAsync();
+  console.log('🔐 promptAsync result:', result);
+  
   if (result?.type === 'success' && result.params?.id_token) {
     try {
+      console.log('🔐 Got id_token, signing in with Firebase...');
       const res = await signInWithGoogleTokens(result.params.id_token, result.params.access_token);
+      console.log('🔐 Sign-in successful:', res);
       return { success: true, payload: res };
     } catch (e: any) {
-      console.error('Firebase sign-in failed', e);
+      console.error('🔐 Firebase sign-in failed', e);
       return { success: false, error: e.message || String(e) };
     }
   }
+  console.warn('🔐 Sign-in not successful. Result type:', result?.type);
   return { success: false, error: result?.type || 'cancelled' };
 }

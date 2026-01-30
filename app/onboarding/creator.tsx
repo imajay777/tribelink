@@ -56,14 +56,22 @@ export default function CreatorOnboardingScreen() {
     // If Google is configured, prompt the user to sign in before finishing.
     const configured = GOOGLE_CLIENT_IDS.webClientId || GOOGLE_CLIENT_IDS.androidClientId || GOOGLE_CLIENT_IDS.iosClientId;
     if (configured) {
+      console.log('🔐 Starting Google sign-in flow...');
       const res = await googleSignInFlow(promptAsync);
+      console.log('🔐 Sign-in response:', res);
       if (res?.success) {
+        console.log('✅ Google sign-in successful');
         // optionally attach profile data from Firebase/local token
         // We persist a minimal profile marker and continue
         const updated = { ...(/* userProfile */ {}), profileConnected: true };
         if (setUserProfile) await setUserProfile(updated);
+      } else {
+        console.warn('❌ Google sign-in failed:', res?.error);
+        Alert.alert('Sign-in failed', res?.error || 'Unable to sign in with Google');
+        return;
       }
     }
+    console.log('✅ Completing onboarding and navigating to home...');
     await setUserType('creator');
     router.replace('/(tabs)/home');
   };
